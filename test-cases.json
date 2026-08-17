@@ -1,0 +1,442 @@
+[
+ {
+  "category": "validate",
+  "fields": "subtype=email",
+  "expected": "/[\\w.%+-]+@[\\w.-]+\\.[A-Za-z]{2,}/gi"
+ },
+ {
+  "category": "validate",
+  "fields": "subtype=lettersOnly;v_type=results;v_name=text",
+  "expected": "<%= Regex.match?(~r/^[A-Za-z]+$/, \"@results.text\") %>"
+ },
+ {
+  "category": "validate",
+  "fields": "subtype=wordList;words=hi\\nhello\\nnamaste",
+  "expected": "/(hi|hello|namaste)/gi"
+ },
+ {
+  "category": "compare",
+  "fields": "left_type=results;left_name=text;op===;rightMode=text;right_literal=Tanu",
+  "expected": "<%= \"@results.text\" == \"Tanu\" %>"
+ },
+ {
+  "category": "compare",
+  "fields": "left_type=results;left_name=score;op=>;rightMode=number;right_literal=50",
+  "expected": "<%= @results.score > 50 %>"
+ },
+ {
+  "category": "compare",
+  "fields": "left_type=results;left_name=a;op=!=;rightMode=var;right_type=results;right_name=b",
+  "expected": "<%= \"@results.a\" != \"@results.b\" %>"
+ },
+ {
+  "category": "containsEtc",
+  "fields": "v_type=contact;v_name=text;mode=contains;phrase=My name is",
+  "expected": "<%= String.contains?(\"@contact.fields.text\", \"My name is\") %>"
+ },
+ {
+  "category": "ifElse",
+  "fields": "v_type=results;v_name=status;value=Yes;thenR=Completed;elseR=Not completed;op===;numeric=no",
+  "expected": "<%= if \"@results.status\" == \"Yes\" do \"Completed\" else \"Not completed\" end %>"
+ },
+ {
+  "category": "chainedIfElse",
+  "fields": "v_type=contact;v_name=status;pairs=new -> Start\\nin progress -> Continue;fallback=Unknown",
+  "expected": "<%= if \"@contact.fields.status\" == \"new\" do \"Start\" else if \"@contact.fields.status\" == \"in progress\" do \"Continue\" else \"Unknown\" end end %>"
+ },
+ {
+  "category": "getItem",
+  "fields": "v_type=results;v_name=options;sep=|;position=2;hasDefault=no",
+  "expected": "<%= String.split(\"@results.options\", \"|\") |> Enum.at(1) %>"
+ },
+ {
+  "category": "getItem",
+  "fields": "v_type=results;v_name=options;sep=|;position=5;hasDefault=yes",
+  "expected": "<%= String.split(\"@results.options\", \"|\") |> Enum.at(4, \"\") %>"
+ },
+ {
+  "category": "filterList",
+  "fields": "v_type=results;v_name=options;sep=|;mode=removeValue;target=B",
+  "expected": "<%= String.split(\"@results.options\", \"|\") |> Enum.reject(fn x -> x == \"B\" end) |> Enum.join(\"|\") %>"
+ },
+ {
+  "category": "filterList",
+  "fields": "v_type=results;v_name=options;sep=|;mode=removeEmpty",
+  "expected": "<%= String.split(\"@results.options\", \"|\", trim: true) |> Enum.join(\"|\") %>"
+ },
+ {
+  "category": "filterList",
+  "fields": "v_type=results;v_name=options;sep=|;mode=keepOnly;target=A",
+  "expected": "<%= String.split(\"@results.options\", \"|\") |> Enum.filter(fn x -> x == \"A\" end) |> Enum.join(\"|\") %>"
+ },
+ {
+  "category": "joinValues",
+  "fields": "source=list;v_type=results;v_name=options;inSep=,;outSep=|",
+  "expected": "<%= Enum.join(String.split(\"@results.options\", \",\"), \"|\") %>"
+ },
+ {
+  "category": "joinValues",
+  "fields": "source=named;names=results:option1\\nresults:option2\\nresults:option3;outSep=|",
+  "expected": "<%= Enum.join([\"@results.option1\", \"@results.option2\", \"@results.option3\"], \"|\") %>"
+ },
+ {
+  "category": "randomPick",
+  "fields": "source=list;v_type=results;v_name=options;sep=|",
+  "expected": "<%= String.split(\"@results.options\", \"|\") |> Enum.random() %>"
+ },
+ {
+  "category": "randomPick",
+  "fields": "source=literal;words=Apple\\nBanana\\nMango",
+  "expected": "<%= Enum.random([\"Apple\", \"Banana\", \"Mango\"]) %>"
+ },
+ {
+  "category": "shuffle",
+  "fields": "names=results:option1\\nresults:option2\\nresults:option3;sep=|",
+  "expected": "<%= Enum.random([\"@results.option1|@results.option2|@results.option3\", \"@results.option1|@results.option3|@results.option2\", \"@results.option2|@results.option1|@results.option3\", \"@results.option2|@results.option3|@results.option1\", \"@results.option3|@results.option1|@results.option2\", \"@results.option3|@results.option2|@results.option1\"]) %>"
+ },
+ {
+  "category": "concat",
+  "fields": "v_type=contact;v_name=name;text=Hello ;order=textFirst",
+  "expected": "<%= \"Hello \" <> \"@contact.fields.name\" %>"
+ },
+ {
+  "category": "concat",
+  "fields": "v_type=contact;v_name=name;text=!;order=varFirst",
+  "expected": "<%= \"@contact.fields.name\" <> \"!\" %>"
+ },
+ {
+  "category": "arithmetic",
+  "fields": "leftMode=var;left_type=results;left_name=total;op=-;rightMode=var;right_type=results;right_name=used",
+  "expected": "<%= @results.total - @results.used %>"
+ },
+ {
+  "category": "arithmetic",
+  "fields": "leftMode=var;left_type=results;left_name=completed;op=pct;rightMode=var;right_type=results;right_name=total",
+  "expected": "<%= (@results.completed / @results.total) * 100 %>"
+ },
+ {
+  "category": "stringOps",
+  "fields": "v_type=results;v_name=text;op=lower",
+  "expected": "<%= String.downcase(\"@results.text\") %>"
+ },
+ {
+  "category": "stringOps",
+  "fields": "v_type=results;v_name=number;op=oddEven",
+  "expected": "<%= if rem(String.to_integer(\"@results.number\"), 2) == 0, do: \"even\", else: \"odd\" %>"
+ },
+ {
+  "category": "slice",
+  "fields": "v_type=results;v_name=text;mode=firstN;n=5",
+  "expected": "<%= String.slice(\"@results.text\", 0, 5) %>"
+ },
+ {
+  "category": "slice",
+  "fields": "v_type=results;v_name=text;mode=after;marker=Now",
+  "expected": "<%= String.split(\"@results.text\", \"Now\", parts: 2) |> Enum.at(1) %>"
+ },
+ {
+  "category": "compare",
+  "fields": "left_type=results;left_name=score1;op=>;rightMode=var;right_type=results;right_name=score2;numeric=yes",
+  "expected": "<%= @results.score1 > @results.score2 %>"
+ },
+ {
+  "category": "arithmetic",
+  "fields": "leftMode=var;left_type=results;left_name=number;op=mod;rightMode=number;right_literal=2",
+  "expected": "<%= rem(@results.number, 2) %>"
+ },
+ {
+  "category": "stringOps",
+  "fields": "v_type=results;v_name=message;op=replace;findText=completed;replaceText=started",
+  "expected": "<%= String.replace(\"@results.message\", \"completed\", \"started\") %>"
+ },
+ {
+  "category": "stringOps",
+  "fields": "v_type=results;v_name=number;op=round",
+  "expected": "<%= Float.round(String.to_float(\"@results.number\"), 0) %>"
+ },
+ {
+  "category": "ifElse",
+  "fields": "v_type=results;v_name=score;op=>=;numeric=yes;value=50;thenR=Pass;elseR=Fail",
+  "expected": "<%= if @results.score >= 50 do \"Pass\" else \"Fail\" end %>"
+ },
+ {
+  "category": "getItem",
+  "fields": "v_type=results;v_name=options;sep=|;mode=count",
+  "expected": "<%= String.split(\"@results.options\", \"|\") |> length() %>"
+ },
+ {
+  "category": "concat",
+  "fields": "v_type=results;v_name=name;text=Hello ;order=textFirst",
+  "expected": "<%= \"Hello \" <> \"@results.name\" %>"
+ },
+ {
+  "category": "joinValues",
+  "fields": "source=named;names=results:option1\\nresults:option2\\nresults:option3;outSep=|",
+  "expected": "<%= Enum.join([\"@results.option1\", \"@results.option2\", \"@results.option3\"], \"|\") %>"
+ },
+ {
+  "category": "compare",
+  "fields": "left_type=results;left_name=answer1;op===;rightMode=var;right_type=results;right_name=answer2",
+  "expected": "<%= \"@results.answer1\" == \"@results.answer2\" %>"
+ },
+ {
+  "category": "compare",
+  "fields": "left_type=results;left_name=answer1;op=!=;rightMode=var;right_type=results;right_name=answer2",
+  "expected": "<%= \"@results.answer1\" != \"@results.answer2\" %>"
+ },
+ {
+  "category": "compare",
+  "fields": "left_type=results;left_name=score1;op=>;rightMode=var;right_type=results;right_name=score2",
+  "expected": "<%= \"@results.score1\" > \"@results.score2\" %>"
+ },
+ {
+  "category": "compare",
+  "fields": "left_type=results;left_name=score1;op=<=;rightMode=var;right_type=results;right_name=score2",
+  "expected": "<%= \"@results.score1\" <= \"@results.score2\" %>"
+ },
+ {
+  "category": "arithmetic",
+  "fields": "leftMode=var;left_type=results;left_name=number1;op=+;rightMode=var;right_type=results;right_name=number2",
+  "expected": "<%= @results.number1 + @results.number2 %>"
+ },
+ {
+  "category": "arithmetic",
+  "fields": "leftMode=var;left_type=results;left_name=total;op=-;rightMode=var;right_type=results;right_name=used",
+  "expected": "<%= @results.total - @results.used %>"
+ },
+ {
+  "category": "arithmetic",
+  "fields": "leftMode=var;left_type=results;left_name=quantity;op=*;rightMode=var;right_type=results;right_name=price",
+  "expected": "<%= @results.quantity * @results.price %>"
+ },
+ {
+  "category": "arithmetic",
+  "fields": "leftMode=var;left_type=results;left_name=total;op=/;rightMode=var;right_type=results;right_name=number_of_people",
+  "expected": "<%= @results.total / @results.number_of_people %>"
+ },
+ {
+  "category": "arithmetic",
+  "fields": "leftMode=var;left_type=results;left_name=count;op=+;rightMode=number;right_literal=1",
+  "expected": "<%= @results.count + 1 %>"
+ },
+ {
+  "category": "arithmetic",
+  "fields": "leftMode=var;left_type=results;left_name=number;op=pct;rightMode=number;right_literal=2",
+  "expected": "<%= (@results.number / 2) * 100 %>"
+ },
+ {
+  "category": "stringOps",
+  "fields": "v_type=results;v_name=text;op=upper",
+  "expected": "<%= String.upcase(\"@results.text\") %>"
+ },
+ {
+  "category": "stringOps",
+  "fields": "v_type=results;v_name=text;op=lower",
+  "expected": "<%= String.downcase(\"@results.text\") %>"
+ },
+ {
+  "category": "stringOps",
+  "fields": "v_type=results;v_name=text;op=cap",
+  "expected": "<%= String.capitalize(\"@results.text\") %>"
+ },
+ {
+  "category": "stringOps",
+  "fields": "v_type=results;v_name=text;op=reverse",
+  "expected": "<%= String.reverse(\"@results.text\") %>"
+ },
+ {
+  "category": "stringOps",
+  "fields": "v_type=results;v_name=text;op=trim",
+  "expected": "<%= String.trim(\"@results.text\") %>"
+ },
+ {
+  "category": "containsEtc",
+  "fields": "v_type=results;v_name=message;mode=contains;phrase=@results.keyword",
+  "expected": "<%= String.contains?(\"@results.message\", \"@results.keyword\") %>"
+ },
+ {
+  "category": "stringOps",
+  "fields": "v_type=results;v_name=text;op=length",
+  "expected": "<%= String.length(\"@results.text\") %>"
+ },
+ {
+  "category": "slice",
+  "fields": "v_type=results;v_name=text;mode=firstN;n=5",
+  "expected": "<%= String.slice(\"@results.text\", 0, 5) %>"
+ },
+ {
+  "category": "getItem",
+  "fields": "v_type=results;v_name=options;sep=|;position=1;hasDefault=no",
+  "expected": "<%= String.split(\"@results.options\", \"|\") |> Enum.at(0) %>"
+ },
+ {
+  "category": "getItem",
+  "fields": "v_type=results;v_name=options;sep=|;position=2;hasDefault=no",
+  "expected": "<%= String.split(\"@results.options\", \"|\") |> Enum.at(1) %>"
+ },
+ {
+  "category": "getItem",
+  "fields": "v_type=results;v_name=options;sep=|;position=3;hasDefault=no",
+  "expected": "<%= String.split(\"@results.options\", \"|\") |> Enum.at(2) %>"
+ },
+ {
+  "category": "getItem",
+  "fields": "v_type=results;v_name=options;sep=|;position=11;hasDefault=no",
+  "expected": "<%= String.split(\"@results.options\", \"|\") |> Enum.at(10) %>"
+ },
+ {
+  "category": "filterList",
+  "fields": "v_type=results;v_name=options;sep=|;mode=removeValue;target=B",
+  "expected": "<%= String.split(\"@results.options\", \"|\") |> Enum.reject(fn x -> x == \"B\" end) |> Enum.join(\"|\") %>"
+ },
+ {
+  "category": "filterList",
+  "fields": "v_type=results;v_name=options;sep=|;mode=removeEmpty",
+  "expected": "<%= String.split(\"@results.options\", \"|\", trim: true) |> Enum.join(\"|\") %>"
+ },
+ {
+  "category": "filterList",
+  "fields": "v_type=results;v_name=options;sep=|;mode=removeValue;target=nil",
+  "expected": "<%= String.split(\"@results.options\", \"|\") |> Enum.reject(fn x -> x == \"nil\" end) |> Enum.join(\"|\") %>"
+ },
+ {
+  "category": "filterList",
+  "fields": "v_type=results;v_name=options;sep=|;mode=keepOnly;target=A",
+  "expected": "<%= String.split(\"@results.options\", \"|\") |> Enum.filter(fn x -> x == \"A\" end) |> Enum.join(\"|\") %>"
+ },
+ {
+  "category": "randomPick",
+  "fields": "source=literal;words=Apple\\nBanana\\nMango",
+  "expected": "<%= Enum.random([\"Apple\", \"Banana\", \"Mango\"]) %>"
+ },
+ {
+  "category": "randomPick",
+  "fields": "source=list;v_type=results;v_name=options;sep=|",
+  "expected": "<%= String.split(\"@results.options\", \"|\") |> Enum.random() %>"
+ },
+ {
+  "category": "joinValues",
+  "fields": "source=named;names=results:sheet.option1\\nresults:sheet.option2\\nresults:sheet.option3\\nresults:sheet.option4\\nresults:sheet.option5\\nresults:sheet.option6\\nresults:sheet.option7\\nresults:sheet.option8\\nresults:sheet.option9\\nresults:sheet.option10;outSep=|",
+  "expected": "<%= Enum.join([\"@results.sheet.option1\", \"@results.sheet.option2\", \"@results.sheet.option3\", \"@results.sheet.option4\", \"@results.sheet.option5\", \"@results.sheet.option6\", \"@results.sheet.option7\", \"@results.sheet.option8\", \"@results.sheet.option9\", \"@results.sheet.option10\"], \"|\") %>"
+ },
+ {
+  "category": "getItem",
+  "fields": "v_type=results;v_name=options_shuffle;sep=|;position=1;hasDefault=no",
+  "expected": "<%= String.split(\"@results.options_shuffle\", \"|\") |> Enum.at(0) %>"
+ },
+ {
+  "category": "getItem",
+  "fields": "v_type=results;v_name=options_shuffle;sep=|;position=2;hasDefault=no",
+  "expected": "<%= String.split(\"@results.options_shuffle\", \"|\") |> Enum.at(1) %>"
+ },
+ {
+  "category": "getItem",
+  "fields": "v_type=results;v_name=options_shuffle;sep=|;position=10;hasDefault=no",
+  "expected": "<%= String.split(\"@results.options_shuffle\", \"|\") |> Enum.at(9) %>"
+ },
+ {
+  "category": "ifElse",
+  "fields": "v_type=results;v_name=status;value=Yes;thenR=Completed;elseR=Not completed;op===;numeric=no",
+  "expected": "<%= if \"@results.status\" == \"Yes\" do \"Completed\" else \"Not completed\" end %>"
+ },
+ {
+  "category": "chainedIfElse",
+  "fields": "v_type=results;v_name=status;pairs=new -> Start\\nin progress -> Continue;fallback=Unknown",
+  "expected": "<%= if \"@results.status\" == \"new\" do \"Start\" else if \"@results.status\" == \"in progress\" do \"Continue\" else \"Unknown\" end end %>"
+ },
+ {
+  "category": "ifElse",
+  "fields": "v_type=results;v_name=text;value=;thenR=No value;elseR=@results.text;op===;numeric=no",
+  "expected": "<%= if \"@results.text\" == \"\" do \"No value\" else \"@results.text\" end %>"
+ },
+ {
+  "category": "chainedIfElse",
+  "fields": "v_type=contact;v_name=activity_status;pairs=Activity 1 completed -> Activity 2\\nActivity 2 completed -> Activity 3\\nActivity 3 completed -> All activities completed;fallback=Activity 1",
+  "expected": "<%= if \"@contact.fields.activity_status\" == \"Activity 1 completed\" do \"Activity 2\" else if \"@contact.fields.activity_status\" == \"Activity 2 completed\" do \"Activity 3\" else if \"@contact.fields.activity_status\" == \"Activity 3 completed\" do \"All activities completed\" else \"Activity 1\" end end end %>"
+ },
+ {
+  "category": "chainedIfElse",
+  "fields": "v_type=contact;v_name=activity_status;pairs=LP Activity 1 completed -> LP Activity 2\\nLP Activity 2 completed -> LP Activity 3\\nLP Activity 3 completed -> LP Activity 4\\nLP Activity 4 completed -> LP Activity 5\\nLP Activity 5 completed -> LP Activity 6\\nLP Activity 6 completed -> LP Activity 7\\nLP Activity 7 completed -> LP Activity 8\\nLP Activity 8 completed -> LP Activity 9\\nLP Activity 9 completed -> LP Activity 10\\nLP Activity 10 completed -> All activities completed;fallback=LP Activity 1",
+  "expected": "<%= if \"@contact.fields.activity_status\" == \"LP Activity 1 completed\" do \"LP Activity 2\" else if \"@contact.fields.activity_status\" == \"LP Activity 2 completed\" do \"LP Activity 3\" else if \"@contact.fields.activity_status\" == \"LP Activity 3 completed\" do \"LP Activity 4\" else if \"@contact.fields.activity_status\" == \"LP Activity 4 completed\" do \"LP Activity 5\" else if \"@contact.fields.activity_status\" == \"LP Activity 5 completed\" do \"LP Activity 6\" else if \"@contact.fields.activity_status\" == \"LP Activity 6 completed\" do \"LP Activity 7\" else if \"@contact.fields.activity_status\" == \"LP Activity 7 completed\" do \"LP Activity 8\" else if \"@contact.fields.activity_status\" == \"LP Activity 8 completed\" do \"LP Activity 9\" else if \"@contact.fields.activity_status\" == \"LP Activity 9 completed\" do \"LP Activity 10\" else if \"@contact.fields.activity_status\" == \"LP Activity 10 completed\" do \"All activities completed\" else \"LP Activity 1\" end end end end end end end end end end %>"
+ },
+ {
+  "category": "chainedIfElse",
+  "fields": "v_type=contact;v_name=activity_status;pairs=UP Activity 1 completed -> UP Activity 2\\nUP Activity 2 completed -> UP Activity 3\\nUP Activity 3 completed -> UP Activity 4\\nUP Activity 4 completed -> UP Activity 5\\nUP Activity 5 completed -> UP Activity 6\\nUP Activity 6 completed -> UP Activity 7\\nUP Activity 7 completed -> UP Activity 8\\nUP Activity 8 completed -> UP Activity 9\\nUP Activity 9 completed -> UP Activity 10\\nUP Activity 10 completed -> All activities completed;fallback=UP Activity 1",
+  "expected": "<%= if \"@contact.fields.activity_status\" == \"UP Activity 1 completed\" do \"UP Activity 2\" else if \"@contact.fields.activity_status\" == \"UP Activity 2 completed\" do \"UP Activity 3\" else if \"@contact.fields.activity_status\" == \"UP Activity 3 completed\" do \"UP Activity 4\" else if \"@contact.fields.activity_status\" == \"UP Activity 4 completed\" do \"UP Activity 5\" else if \"@contact.fields.activity_status\" == \"UP Activity 5 completed\" do \"UP Activity 6\" else if \"@contact.fields.activity_status\" == \"UP Activity 6 completed\" do \"UP Activity 7\" else if \"@contact.fields.activity_status\" == \"UP Activity 7 completed\" do \"UP Activity 8\" else if \"@contact.fields.activity_status\" == \"UP Activity 8 completed\" do \"UP Activity 9\" else if \"@contact.fields.activity_status\" == \"UP Activity 9 completed\" do \"UP Activity 10\" else if \"@contact.fields.activity_status\" == \"UP Activity 10 completed\" do \"All activities completed\" else \"UP Activity 1\" end end end end end end end end end end %>"
+ },
+ {
+  "category": "chainedIfElse",
+  "fields": "v_type=contact;v_name=activity_status;pairs=LP Activity 1 completed -> LP Activity 2\\nLP Activity 2 completed -> LP Activity 3\\nLP Activity 3 completed -> LP Activity 4\\nLP Activity 4 completed -> LP Activity 5\\nLP Activity 5 completed -> LP Activity 6\\nLP Activity 6 completed -> LP Activity 7\\nLP Activity 7 completed -> LP Activity 8\\nLP Activity 8 completed -> LP Activity 9\\nLP Activity 9 completed -> LP Activity 10\\nLP Activity 10 completed -> UP Activity 1\\nUP Activity 1 completed -> UP Activity 2\\nUP Activity 2 completed -> UP Activity 3\\nUP Activity 3 completed -> UP Activity 4\\nUP Activity 4 completed -> UP Activity 5\\nUP Activity 5 completed -> UP Activity 6\\nUP Activity 6 completed -> UP Activity 7\\nUP Activity 7 completed -> UP Activity 8\\nUP Activity 8 completed -> UP Activity 9\\nUP Activity 9 completed -> UP Activity 10\\nUP Activity 10 completed -> All activities completed;fallback=LP Activity 1",
+  "expected": "<%= if \"@contact.fields.activity_status\" == \"LP Activity 1 completed\" do \"LP Activity 2\" else if \"@contact.fields.activity_status\" == \"LP Activity 2 completed\" do \"LP Activity 3\" else if \"@contact.fields.activity_status\" == \"LP Activity 3 completed\" do \"LP Activity 4\" else if \"@contact.fields.activity_status\" == \"LP Activity 4 completed\" do \"LP Activity 5\" else if \"@contact.fields.activity_status\" == \"LP Activity 5 completed\" do \"LP Activity 6\" else if \"@contact.fields.activity_status\" == \"LP Activity 6 completed\" do \"LP Activity 7\" else if \"@contact.fields.activity_status\" == \"LP Activity 7 completed\" do \"LP Activity 8\" else if \"@contact.fields.activity_status\" == \"LP Activity 8 completed\" do \"LP Activity 9\" else if \"@contact.fields.activity_status\" == \"LP Activity 9 completed\" do \"LP Activity 10\" else if \"@contact.fields.activity_status\" == \"LP Activity 10 completed\" do \"UP Activity 1\" else if \"@contact.fields.activity_status\" == \"UP Activity 1 completed\" do \"UP Activity 2\" else if \"@contact.fields.activity_status\" == \"UP Activity 2 completed\" do \"UP Activity 3\" else if \"@contact.fields.activity_status\" == \"UP Activity 3 completed\" do \"UP Activity 4\" else if \"@contact.fields.activity_status\" == \"UP Activity 4 completed\" do \"UP Activity 5\" else if \"@contact.fields.activity_status\" == \"UP Activity 5 completed\" do \"UP Activity 6\" else if \"@contact.fields.activity_status\" == \"UP Activity 6 completed\" do \"UP Activity 7\" else if \"@contact.fields.activity_status\" == \"UP Activity 7 completed\" do \"UP Activity 8\" else if \"@contact.fields.activity_status\" == \"UP Activity 8 completed\" do \"UP Activity 9\" else if \"@contact.fields.activity_status\" == \"UP Activity 9 completed\" do \"UP Activity 10\" else if \"@contact.fields.activity_status\" == \"UP Activity 10 completed\" do \"All activities completed\" else \"LP Activity 1\" end end end end end end end end end end end end end end end end end end end end %>"
+ },
+ {
+  "category": "compare",
+  "fields": "left_type=results;left_name=score;op===;rightMode=number;right_literal=100",
+  "expected": "<%= @results.score == 100 %>"
+ },
+ {
+  "category": "compare",
+  "fields": "left_type=results;left_name=score;op=!=;rightMode=number;right_literal=0",
+  "expected": "<%= @results.score != 0 %>"
+ },
+ {
+  "category": "containsEtc",
+  "fields": "v_type=results;v_name=text;mode=starts;phrase=Hello",
+  "expected": "<%= String.starts_with?(\"@results.text\", \"Hello\") %>"
+ },
+ {
+  "category": "containsEtc",
+  "fields": "v_type=results;v_name=text;mode=ends;phrase=completed",
+  "expected": "<%= String.ends_with?(\"@results.text\", \"completed\") %>"
+ },
+ {
+  "category": "validate",
+  "fields": "subtype=lettersOnly;v_type=results;v_name=text",
+  "expected": "<%= Regex.match?(~r/^[A-Za-z]+$/, \"@results.text\") %>"
+ },
+ {
+  "category": "filterList",
+  "fields": "v_type=results;v_name=options;sep=|;mode=removeValue;target=B",
+  "expected": "<%= String.split(\"@results.options\", \"|\") |> Enum.reject(fn x -> x == \"B\" end) |> Enum.join(\"|\") %>"
+ },
+ {
+  "category": "getItem",
+  "fields": "v_type=results;v_name=options_shuffle;sep=|;position=5;hasDefault=no",
+  "expected": "<%= String.split(\"@results.options_shuffle\", \"|\") |> Enum.at(4) %>"
+ },
+ {
+  "category": "joinValues",
+  "fields": "source=named;names=results:first_name\\nresults:last_name;outSep= ",
+  "expected": "<%= Enum.join([\"@results.first_name\", \"@results.last_name\"], \" \") %>"
+ },
+ {
+  "category": "arithmetic",
+  "fields": "leftMode=var;left_type=results;left_name=completed;op=pct;rightMode=var;right_type=results;right_name=total",
+  "expected": "<%= (@results.completed / @results.total) * 100 %>"
+ },
+ {
+  "category": "joinValues",
+  "fields": "source=list;v_type=results;v_name=options;inSep=|;outSep=|",
+  "expected": "<%= Enum.join(String.split(\"@results.options\", \"|\"), \"|\") %>"
+ },
+ {
+  "category": "ifElse",
+  "fields": "v_type=results;v_name=score;op=>=;numeric=yes;value=50;thenR=Pass;elseR=Fail",
+  "expected": "<%= if @results.score >= 50 do \"Pass\" else \"Fail\" end %>"
+ },
+ {
+  "category": "joinValues",
+  "fields": "source=named;names=results:greeting\\ncontact:first_name;outSep= ",
+  "expected": "<%= Enum.join([\"@results.greeting\", \"@contact.fields.first_name\"], \" \") %>"
+ },
+ {
+  "category": "joinValues",
+  "fields": "source=list;v_type=results;v_name=text;inSep=,;outSep=|",
+  "expected": "<%= Enum.join(String.split(\"@results.text\", \",\"), \"|\") %>"
+ },
+ {
+  "category": "chainedIfElse",
+  "fields": "v_type=results;v_name=score;numeric=yes;pairs=>=80 -> Excellent\\n>=50 -> Pass;fallback=Needs improvement",
+  "expected": "<%= if @results.score >= 80 do \"Excellent\" else if @results.score >= 50 do \"Pass\" else \"Needs improvement\" end end %>"
+ }
+]
