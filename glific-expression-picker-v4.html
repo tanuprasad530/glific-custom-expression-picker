@@ -120,9 +120,10 @@
     { id:'validate', label:'Validate a value', desc:'Check whether a value matches a specific format, such as an email address, phone number, or date.',
       fields:[
         { key:'subtype', label:'Pattern', type:'select', options:[
+          ['lettersOnly','Letters only (A-Z, a-z)'],['digitsOnly','Digits only (0-9)'],
           ['email','Email address'],['phone','Indian mobile number'],['otp','OTP code (4-6 digits)'],
-          ['date','Date (DD/MM/YYYY)'],['time','Time (24-hour)'],['lettersOnly','Letters only (A-Z, a-z)'],
-          ['digitsOnly','Digits only (0-9)'],['wordList','Custom list of exact words'] ] },
+          ['date','Date (DD/MM/YYYY)'],['time','Time (24-hour)'],
+          ['wordList','Custom list of exact words'] ] },
       ].concat(varFields('v','Variable (only needed for letters/digits-only)')).concat([
         { key:'words', label:'Words (one per line)', type:'textarea', placeholder:'hi\nhello\nnamaste', showIf:function(f){ return f.subtype==='wordList'; } }
       ]),
