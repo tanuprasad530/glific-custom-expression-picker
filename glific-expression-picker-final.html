@@ -53,15 +53,16 @@
 <body>
 <div class="wrap">
   <h1>Glific Expression Picker</h1>
-  <p class="sub">Some Glific flows need a small custom rule — checking a value, combining two variables, splitting a list. This tool builds that rule for you: pick what you need, fill in the blanks, and copy the result into your flow.</p>
-  <p class="cat-desc" style="margin-bottom:20px;">Wherever you see @results.x or @contact.fields.x, <b>x is the variable's shortcode</b> — e.g. for @results.options, the name to type in below is just <span class="mono">options</span>.</p>
+  <p class="sub">Build custom expressions for your Glific flows. Select what you want to do, fill in the required details, and generate the expression.</p>
+  <p class="cat-desc" style="margin-bottom:20px;">Wherever you see <span class="mono">@results.x</span> or <span class="mono">@contact.fields.x</span>, replace <span class="mono">x</span> with your variable's shortcode — e.g. for <span class="mono">@results.options</span>, enter <span class="mono">options</span>.</p>
+
 
   <section class="panel">
-    <h2>1. What do you need?</h2>
+    <h2>1. Choose what you want to do</h2>
     <select id="categorySelect"></select>
     <p class="cat-desc" id="categoryDesc"></p>
     <div id="fieldsArea"></div>
-    <button class="btn" id="buildBtn">Build expression</button>
+    <button class="btn" id="buildBtn">Generate expression</button>
   </section>
 
   <section class="panel" id="outputPanel">
