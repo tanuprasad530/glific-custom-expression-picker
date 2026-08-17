@@ -1,0 +1,498 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Glific Expression Picker</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #F4F9F6; --panel: #FFFFFF; --ink: #063F24; --muted: #4C6B5C;
+    --accent: #23995B; --accent-soft: #CCE6D0; --border: #D7E5DC; --mono-bg: #063F24;
+    --amber: #F5A623; --ok-ink:#23995B; --warn-ink:#8A5A00;
+  }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink); font-family:'Heebo',system-ui,sans-serif; line-height:1.5; }
+  .mono { font-family:'IBM Plex Mono', ui-monospace, monospace; }
+  .wrap { max-width:760px; margin:0 auto; padding:36px 20px 60px; }
+  h1 { font-family:'Heebo',sans-serif; font-weight:700; font-size:24px; margin:0 0 6px; }
+  .sub { color:var(--muted); font-size:14px; margin:0 0 24px; }
+  label { display:block; font-size:12.5px; font-weight:600; color:var(--muted); margin:14px 0 5px; }
+  label:first-child { margin-top:0; }
+  select, input[type="text"], input[type="number"], textarea {
+    width:100%; font-family:'Heebo',sans-serif; font-size:14.5px; padding:10px 12px;
+    border:1px solid var(--border); border-radius:8px; background:#FBFCFD; color:var(--ink);
+  }
+  textarea { font-family:'IBM Plex Mono', monospace; font-size:13px; resize:vertical; min-height:70px; }
+  .row { display:flex; gap:10px; }
+  .row > div { flex:1; }
+  .btn { font-family:'Heebo',sans-serif; font-weight:600; font-size:14px; padding:11px 20px;
+    border-radius:8px; border:none; cursor:pointer; background:var(--ink); color:white; margin-top:18px; }
+  .btn:hover { background:#0a5934; }
+  .btn.small { padding:6px 12px; font-size:12.5px; margin-top:0; background:transparent; color:var(--accent); border:1px solid var(--accent); }
+  .btn.small:hover { background:var(--accent-soft); }
+  .panel { background:var(--panel); border:1px solid var(--border); border-radius:10px; padding:20px; margin-bottom:18px; }
+  .panel h2 { font-family:'Heebo',sans-serif; font-size:12px; text-transform:uppercase; letter-spacing:.07em;
+    color:var(--muted); margin:0 0 4px; font-weight:600; }
+  #outputPanel { display:none; }
+  .meta-line { font-size:13px; margin-bottom:10px; color:var(--muted); }
+  .meta-line b { color:var(--ink); }
+  .confirmed { color:var(--ok-ink); font-weight:600; }
+  .verify { color:var(--warn-ink); font-weight:600; }
+  .expr-box { background:var(--mono-bg); color:#E7F3F1; border-radius:8px; padding:13px 15px; font-size:14px;
+    word-break:break-all; display:flex; justify-content:space-between; align-items:flex-start; gap:12px; margin-bottom:6px; }
+  .expr-box .code { color:var(--amber); }
+  .target { font-size:12.5px; color:var(--muted); margin-bottom:6px; }
+  .field-hint { font-size:11.5px; color:var(--muted); margin-top:4px; }
+  .copied { font-size:11px; color:var(--amber); margin-left:8px; }
+  .cat-desc { font-size:12.5px; color:var(--muted); margin:4px 0 0; }
+  .hidden { display:none; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Glific Expression Picker</h1>
+  <p class="sub">Create custom expressions for your Glific flows — without writing them from scratch.</p>
+  <p class="cat-desc" style="margin-bottom:20px;">Wherever you see <span class="mono">@results.x</span> or <span class="mono">@contact.fields.x</span>, replace <span class="mono">x</span> with your variable's shortcode — e.g. for <span class="mono">@results.options</span>, enter <span class="mono">options</span>.</p>
+
+
+  <section class="panel">
+    <h2>1. Select an action</h2>
+    <select id="categorySelect"></select>
+    <p class="cat-desc" id="categoryDesc"></p>
+    <div id="fieldsArea"></div>
+    <button class="btn" id="buildBtn">Generate expression</button>
+  </section>
+
+  <section class="panel" id="outputPanel">
+    <h2>2. Your expression</h2>
+    <div class="meta-line" id="metaLine"></div>
+    <div class="expr-box">
+      <span class="mono code" id="exprCode"></span>
+      <button class="btn small" id="copyBtn">Copy</button>
+      <span class="copied" id="copiedFlag"></span>
+    </div>
+    <div class="target" id="targetLine"></div>
+  </section>
+</div>
+
+<script>
+  // ---------- shared helpers ----------
+  function v(type, name) { return (type === 'contact' ? '@contact.fields.' : '@results.') + (name || 'your_variable'); }
+  function q(s) { return '"' + String(s).replace(/"/g, '\\"') + '"'; }
+  function parseLines(text) { return (text || '').split('\n').map(function(s){ return s.trim(); }).filter(Boolean); }
+  function parsePairs(text) {
+    return parseLines(text).map(function(line) {
+      var parts = line.split('->').map(function(s){ return s.trim(); });
+      return [parts[0] || '', parts[1] || ''];
+    });
+  }
+  function buildNestedIfElse(varTok, pairs, fallback) {
+    var code = '', closings = '';
+    pairs.forEach(function(p, i) {
+      code += (i === 0 ? 'if ' : ' else if ') + q(varTok) + ' == ' + q(p[0]) + ' do ' + q(p[1]);
+      closings += ' end';
+    });
+    code += ' else ' + q(fallback) + closings;
+    return code;
+  }
+  function generatePermutations(arr) {
+    if (arr.length <= 1) return [arr];
+    var out = [];
+    for (var i = 0; i < arr.length; i++) {
+      generatePermutations(arr.slice(0,i).concat(arr.slice(i+1))).forEach(function(p){ out.push([arr[i]].concat(p)); });
+    }
+    return out;
+  }
+
+  // ---------- field renderers ----------
+  function varFields(prefix, label) {
+    return [
+      { key: prefix+'_type', label: label + ' source', hint:'Choose where the value is stored.', type:'select', options:[['results','Result variable (@results.x)'],['contact','Contact field (@contact.fields.x)']] },
+      { key: prefix+'_name', label: label + ' name', hint:'Enter the variable\'s shortcode.', type:'text', placeholder:'e.g. text, status, options' }
+    ];
+  }
+
+  // ---------- CATEGORY DEFINITIONS ----------
+  var CATEGORIES = [
+
+    { id:'validate', label:'Validate a value', desc:'Check whether a value matches a specific format, such as an email address, phone number, or date.',
+      fields:[
+        { key:'subtype', label:'Pattern', type:'select', options:[
+          ['email','Email address'],['phone','Indian mobile number'],['otp','OTP code (4-6 digits)'],
+          ['date','Date (DD/MM/YYYY)'],['time','Time (24-hour)'],['lettersOnly','Letters only (A-Z, a-z)'],
+          ['digitsOnly','Digits only (0-9)'],['wordList','Custom list of exact words'] ] },
+      ].concat(varFields('v','Variable (only needed for letters/digits-only)')).concat([
+        { key:'words', label:'Words (one per line)', type:'textarea', placeholder:'hi\nhello\nnamaste', showIf:function(f){ return f.subtype==='wordList'; } }
+      ]),
+      build:function(f) {
+        var map = {
+          email: { code:'[\\w.%+-]+@[\\w.-]+\\.[A-Za-z]{2,}', type:'regex' },
+          phone: { code:'(\\+91[\\-\\s]?)?[6-9]\\d{9}', type:'regex' },
+          otp: { code:'\\b\\d{4,6}\\b', type:'regex' },
+          date: { code:'^(0[1-9]|[12][0-9]|3[01])/(0[1-9]|1[0-2])/(?:202[5-9]|2030)$', type:'regex' },
+          time: { code:'([01][0-9]|2[0-3]):([0-5][0-9])$', type:'regex' }
+        };
+        if (map[f.subtype]) return { code:'/'+map[f.subtype].code+'/gi', confidence:'confirmed_allowed', targetNode:'Wait for Response \u2192 Matches Regex' };
+        if (f.subtype === 'lettersOnly') return { code:'<%= Regex.match?(~r/^[A-Za-z]+$/, '+q(v(f.v_type,f.v_name))+') %>', confidence:'confirmed_allowed', targetNode:'Split by Custom Expression', explain:'Glific\u2019s own documented pattern.' };
+        if (f.subtype === 'digitsOnly') return { code:'<%= Regex.match?(~r/^[0-9]+$/, '+q(v(f.v_type,f.v_name))+') %>', confidence:'confirmed_allowed', targetNode:'Split by Custom Expression' };
+        if (f.subtype === 'wordList') {
+          var words = parseLines(f.words).map(function(w){ return w.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'); });
+          return { code:'/('+words.join('|')+')/gi', confidence:'confirmed_allowed', targetNode:'Wait for Response \u2192 Matches Regex' };
+        }
+        return null;
+      } },
+
+    { id:'compare', label:'Compare two things', desc:'Variable vs. variable, or variable vs. a literal value.',
+      fields:[].concat(varFields('left','Left side')).concat([
+        { key:'op', label:'Operator', type:'select', options:[['==','equals'],['!=','does not equal'],['>','greater than'],['<','less than'],['>=','at least'],['<=','at most']] },
+        { key:'rightMode', label:'Right side is', type:'select', options:[['var','Another variable'],['text','A literal piece of text'],['number','A literal number']] },
+        { key:'right_literal', label:'Literal value', type:'text', showIf:function(f){ return f.rightMode!=='var'; } }
+      ]).concat(varFields('right','Right side variable').map(function(x){ x.showIf = function(f){ return f.rightMode==='var'; }; return x; })).concat([
+        { key:'numeric', label:'Are both sides numbers?', type:'select', options:[['no','No — compare as text'],['yes','Yes — numeric comparison']], showIf:function(f){ return f.rightMode==='var'; } }
+      ]),
+      build:function(f) {
+        var left = v(f.left_type, f.left_name);
+        var numeric = f.rightMode === 'number' || (f.rightMode === 'var' && f.numeric === 'yes');
+        var right = f.rightMode === 'var' ? v(f.right_type, f.right_name) : f.right_literal;
+        var code = numeric ? ('<%= '+left+' '+f.op+' '+right+' %>') : ('<%= '+q(left)+' '+f.op+' '+q(right)+' %>');
+        return { code:code, confidence: numeric ? 'unverified' : 'confirmed_allowed', targetNode:'Split by Custom Expression',
+          caveat: numeric ? 'This expression compares numeric values. Test it in Preview to confirm it works as expected.' : null };
+      } },
+
+    { id:'containsEtc', label:'Contains / starts with / ends with', desc:'Check for a phrase inside a variable\u2019s text.',
+      fields:[].concat(varFields('v','Variable')).concat([
+        { key:'mode', label:'Check', type:'select', options:[['contains','Contains'],['starts','Starts with'],['ends','Ends with']] },
+        { key:'phrase', label:'Phrase', type:'text', placeholder:'e.g. My name is' }
+      ]),
+      build:function(f) {
+        var fn = { contains:'String.contains?', starts:'String.starts_with?', ends:'String.ends_with?' }[f.mode];
+        return { code:'<%= '+fn+'('+q(v(f.v_type,f.v_name))+', '+q(f.phrase)+') %>', confidence:'unverified', targetNode:'Save a result for this flow, or Split by Custom Expression' };
+      } },
+
+    { id:'ifElse', label:'Simple if/else', desc:'One condition, two possible outcomes.',
+      fields:[].concat(varFields('v','Variable')).concat([
+        { key:'op', label:'Condition', type:'select', options:[['==','equals'],['!=','does not equal'],['>','is greater than'],['<','is less than'],['>=','is at least'],['<=','is at most']] },
+        { key:'numeric', label:'Is this a number comparison?', type:'select', options:[['no','No — text'],['yes','Yes — number']] },
+        { key:'value', label:'Compared against', type:'text' },
+        { key:'thenR', label:'Return', type:'text' },
+        { key:'elseR', label:'Otherwise return', type:'text' }
+      ]),
+      build:function(f) {
+        var varTok = v(f.v_type, f.v_name);
+        var numeric = f.numeric === 'yes';
+        var cond = numeric ? (varTok+' '+f.op+' '+f.value) : (q(varTok)+' '+f.op+' '+q(f.value));
+        return { code:'<%= if '+cond+' do '+q(f.thenR)+' else '+q(f.elseR)+' end %>',
+          confidence: numeric ? 'unverified' : 'confirmed_allowed', targetNode:'Save a result for this flow, or Split by Custom Expression',
+          caveat: numeric ? 'This expression compares numeric values. Test it in Preview to confirm it works as expected.' : null };
+      } },
+
+    { id:'chainedIfElse', label:'Chained if/else', desc:'Multiple conditions checked in order — equality, or numeric thresholds.',
+      fields:[].concat(varFields('v','Variable')).concat([
+        { key:'numeric', label:'Type of conditions', type:'select', options:[['no','Equality (value -> result)'],['yes','Numeric thresholds (operator value -> result)']] },
+        { key:'pairs', label:'One condition per line', type:'textarea', placeholder:'new -> Start\nin progress -> Continue\ncompleted -> Done' },
+        { key:'fallback', label:'Otherwise return', type:'text' }
+      ]),
+      build:function(f) {
+        var varTok = v(f.v_type, f.v_name);
+        if (f.numeric === 'yes') {
+          var lines = parseLines(f.pairs);
+          var code = '', closings = '';
+          for (var i = 0; i < lines.length; i++) {
+            var m = lines[i].match(/^\s*(>=|<=|==|!=|>|<)\s*(\S+)\s*->\s*(.+)$/);
+            if (!m) return null;
+            code += (i === 0 ? 'if ' : ' else if ') + varTok + ' ' + m[1] + ' ' + m[2] + ' do ' + q(m[3].trim());
+            closings += ' end';
+          }
+          if (!code) return null;
+          code += ' else ' + q(f.fallback) + closings;
+          return { code:'<%= ' + code + ' %>', confidence:'unverified',
+            targetNode:'Save a result for this flow, or Split by Custom Expression',
+            caveat:'This expression compares numeric values. Test it in Preview to confirm it works as expected.',
+            explain:'Nested if/else, not case/cond \u2014 confirmed unsupported.' };
+        }
+        var pairs = parsePairs(f.pairs);
+        if (pairs.length === 0) return null;
+        return { code:'<%= '+buildNestedIfElse(varTok, pairs, f.fallback)+' %>', confidence:'confirmed_allowed',
+          targetNode:'Save a result for this flow, or Split by Custom Expression',
+          explain:'Nested if/else \u2014 not case/cond, which are confirmed unsupported even though Glific\u2019s docs show a case example.' };
+      } },
+
+    { id:'getItem', label:'Get an item from a list, or count it', desc:'Pull one value out of a list of items, or count how many items there are.',
+      fields:[].concat(varFields('v','Variable')).concat([
+        { key:'sep', label:'Separator', type:'text', placeholder:'|' },
+        { key:'mode', label:'What do you need?', type:'select', options:[['position','An item at a position'],['count','How many items there are']] },
+        { key:'position', label:'Which item? (1 = first, 2 = second, etc.)', type:'number', placeholder:'1', showIf:function(f){ return f.mode!=='count'; } },
+        { key:'hasDefault', label:'Return empty if that position doesn\u2019t exist?', type:'select', options:[['no','No'],['yes','Yes']], showIf:function(f){ return f.mode!=='count'; } }
+      ]),
+      build:function(f) {
+        var varTok = q(v(f.v_type,f.v_name));
+        if (f.mode === 'count') {
+          return { code:'<%= String.split('+varTok+', '+q(f.sep)+') |> length() %>', confidence:'unverified', targetNode:'Save a result for this flow' };
+        }
+        var posNum = parseInt(f.position, 10);
+        if (isNaN(posNum)) posNum = 1;
+        var idx = posNum - 1;
+        var def = f.hasDefault === 'yes' ? ', ""' : '';
+        return { code:'<%= String.split('+varTok+', '+q(f.sep)+') |> Enum.at('+idx+def+') %>',
+          confidence:'unverified', targetNode:'Save a result for this flow' };
+      } },
+
+    { id:'filterList', label:'Split a list, remove/keep values', desc:'Drop a specific value, drop empties, or keep only one value.',
+      fields:[].concat(varFields('v','Variable')).concat([
+        { key:'sep', label:'Separator', type:'text', placeholder:'|' },
+        { key:'mode', label:'Action', type:'select', options:[['removeValue','Remove a specific value'],['removeEmpty','Remove empty values'],['keepOnly','Keep only a specific value']] },
+        { key:'target', label:'Value', type:'text', showIf:function(f){ return f.mode!=='removeEmpty'; } }
+      ]),
+      build:function(f) {
+        var varTok = v(f.v_type, f.v_name);
+        if (f.mode === 'removeEmpty') {
+          return { code:'<%= String.split('+q(varTok)+', '+q(f.sep)+', trim: true) |> Enum.join('+q(f.sep)+') %>',
+            confidence:'unverified', targetNode:'Save a result for this flow' };
+        }
+        var fn = f.mode === 'keepOnly' ? 'Enum.filter' : 'Enum.reject';
+        return { code:'<%= String.split('+q(varTok)+', '+q(f.sep)+') |> '+fn+'(fn x -> x == '+q(f.target)+' end) |> Enum.join('+q(f.sep)+') %>',
+          confidence:'unverified', targetNode:'Save a result for this flow',
+          caveat: fn==='Enum.reject' ? 'Enum.reject: only 2 of 7 known Enum functions are confirmed working \u2014 test this specific one first.' : null };
+      } },
+
+    { id:'joinValues', label:'Join values', desc:'Combine a list, or several named variables, into one string.',
+      fields:[
+        { key:'source', label:'Source', type:'select', options:[['list','A list stored in one variable'],['named','Several named variables']] },
+      ].concat(varFields('v','Variable').map(function(x){ x.showIf=function(f){return f.source==='list';}; return x; })).concat([
+        { key:'inSep', label:'Current separator', type:'text', placeholder:'|', showIf:function(f){ return f.source==='list'; } },
+        { key:'names', label:'Variable names, one per line (type:name, e.g. results:option1)', type:'textarea', placeholder:'results:option1\nresults:option2\nresults:option3', showIf:function(f){ return f.source==='named'; } },
+        { key:'outSep', label:'Separator to join with', type:'text', placeholder:'|' }
+      ]),
+      build:function(f) {
+        if (f.source === 'list') {
+          return { code:'<%= Enum.join(String.split('+q(v(f.v_type,f.v_name))+', '+q(f.inSep)+'), '+q(f.outSep)+') %>',
+            confidence:'confirmed_allowed', targetNode:'Save a result for this flow' };
+        }
+        var names = parseLines(f.names).map(function(line){
+          var parts = line.split(':'); var type = parts[0] === 'contact' ? 'contact' : 'results';
+          return q(v(type, parts[1] || parts[0]));
+        });
+        if (names.length === 0) return null;
+        return { code:'<%= Enum.join(['+names.join(', ')+'], '+q(f.outSep)+') %>', confidence:'confirmed_allowed', targetNode:'Save a result for this flow' };
+      } },
+
+    { id:'randomPick', label:'Pick one at random', desc:'From a list, from named variables, or from a fixed set of words.',
+      fields:[
+        { key:'source', label:'Source', type:'select', options:[['list','A list stored in one variable'],['named','Several named variables'],['literal','A fixed set of words']] },
+      ].concat(varFields('v','Variable').map(function(x){ x.showIf=function(f){return f.source==='list';}; return x; })).concat([
+        { key:'sep', label:'Separator', type:'text', placeholder:'|', showIf:function(f){ return f.source==='list'; } },
+        { key:'names', label:'Variable names, one per line (type:name)', type:'textarea', placeholder:'results:option1\nresults:option2', showIf:function(f){ return f.source==='named'; } },
+        { key:'words', label:'Words, one per line', type:'textarea', placeholder:'Apple\nBanana\nMango', showIf:function(f){ return f.source==='literal'; } }
+      ]),
+      build:function(f) {
+        if (f.source === 'list') return { code:'<%= String.split('+q(v(f.v_type,f.v_name))+', '+q(f.sep)+') |> Enum.random() %>', confidence:'confirmed_allowed', targetNode:'Save a result for this flow' };
+        if (f.source === 'literal') {
+          var words = parseLines(f.words).map(q);
+          if (words.length===0) return null;
+          return { code:'<%= Enum.random(['+words.join(', ')+']) %>', confidence:'confirmed_allowed', targetNode:'Save a result for this flow' };
+        }
+        var names = parseLines(f.names).map(function(line){ var parts=line.split(':'); var type=parts[0]==='contact'?'contact':'results'; return q(v(type, parts[1]||parts[0])); });
+        if (names.length===0) return null;
+        return { code:'<%= Enum.random(['+names.join(', ')+']) %>', confidence:'confirmed_allowed', targetNode:'Save a result for this flow' };
+      } },
+
+    { id:'shuffle', label:'Shuffle fixed variables', desc:'Randomize the order of 2-4 named variables (Enum.shuffle is confirmed blocked).',
+      fields:[
+        { key:'names', label:'Variable names, one per line (type:name)', type:'textarea', placeholder:'results:option1\nresults:option2\nresults:option3' },
+        { key:'sep', label:'Separator', type:'text', placeholder:'|' }
+      ],
+      build:function(f) {
+        var names = parseLines(f.names).map(function(line){ var parts=line.split(':'); var type=parts[0]==='contact'?'contact':'results'; return v(type, parts[1]||parts[0]); });
+        if (names.length < 2) return null;
+        if (names.length > 4) return { code:'\u2014', confidence:'guidance', targetNode:'',
+          caveat: names.length+' variables means '+names.length+'! orderings \u2014 too many to hardcode. Ask the dev team to allow Enum.shuffle, or use a webhook.' };
+        var perms = generatePermutations(names);
+        var options = perms.map(function(p){ return q(p.join(f.sep)); });
+        return { code:'<%= Enum.random(['+options.join(', ')+']) %>', confidence:'confirmed_allowed', targetNode:'Save a result for this flow',
+          explain:'Enum.shuffle is confirmed blocked, so this pre-builds all '+perms.length+' orderings and lets Enum.random (confirmed working) pick one.' };
+      } },
+
+    { id:'concat', label:'Combine text and a variable', desc:'Join a literal piece of text with a variable\u2019s value.',
+      fields:[].concat(varFields('v','Variable')).concat([
+        { key:'text', label:'Literal text', type:'text', placeholder:'Hello ' },
+        { key:'order', label:'Order', type:'select', options:[['textFirst','Text, then variable'],['varFirst','Variable, then text']] }
+      ]),
+      build:function(f) {
+        var varTok = q(v(f.v_type, f.v_name)), lit = q(f.text);
+        var code = f.order === 'textFirst' ? (lit+' <> '+varTok) : (varTok+' <> '+lit);
+        return { code:'<%= '+code+' %>', confidence:'confirmed_allowed', targetNode:'Save a result for this flow, or Update the contact' };
+      } },
+
+    { id:'arithmetic', label:'Arithmetic', desc:'Add, subtract, multiply, divide, find a percentage, or get the remainder.',
+      fields:[
+        { key:'leftMode', label:'Left side', type:'select', options:[['var','Variable'],['number','Literal number']] },
+        { key:'left_literal', label:'Left number', type:'text', showIf:function(f){return f.leftMode==='number';} }
+      ].concat(varFields('left','Left variable').map(function(x){ x.showIf=function(f){return f.leftMode==='var';}; return x; })).concat([
+        { key:'op', label:'Operation', type:'select', options:[['+','Add'],['-','Subtract'],['*','Multiply'],['/','Divide'],['pct','Percentage (left \u00f7 right \u00d7 100)'],['mod','Remainder (modulo)']] },
+        { key:'rightMode', label:'Right side', type:'select', options:[['var','Variable'],['number','Literal number']] },
+        { key:'right_literal', label:'Right number', type:'text', showIf:function(f){return f.rightMode==='number';} }
+      ]).concat(varFields('right','Right variable').map(function(x){ x.showIf=function(f){return f.rightMode==='var';}; return x; })),
+      build:function(f) {
+        var left = f.leftMode === 'var' ? v(f.left_type, f.left_name) : f.left_literal;
+        var right = f.rightMode === 'var' ? v(f.right_type, f.right_name) : f.right_literal;
+        var code = f.op === 'pct' ? ('('+left+' / '+right+') * 100') : f.op === 'mod' ? ('rem('+left+', '+right+')') : (left+' '+f.op+' '+right);
+        return { code:'<%= '+code+' %>', confidence:'unverified', targetNode:'Save a result for this flow',
+          caveat:'This expression uses numeric values. Test it in Preview to confirm it works as expected.' };
+      } },
+
+    { id:'stringOps', label:'Text case / trim / reverse / replace / round', desc:'Single-variable text and number transformations.',
+      fields:[].concat(varFields('v','Variable')).concat([
+        { key:'op', label:'Operation', type:'select', options:[
+          ['lower','Convert to lowercase'],['upper','Convert to uppercase'],['cap','Capitalize'],
+          ['trim','Trim whitespace'],['reverse','Reverse the text'],['length','Character count'],
+          ['oddEven','Odd or even (numeric)'],['replace','Find and replace a word/phrase'],['round','Round to nearest whole number'] ] },
+        { key:'findText', label:'Find', type:'text', showIf:function(f){ return f.op==='replace'; } },
+        { key:'replaceText', label:'Replace with', type:'text', showIf:function(f){ return f.op==='replace'; } }
+      ]),
+      build:function(f) {
+        var varTok = q(v(f.v_type, f.v_name));
+        var map = {
+          lower: { code:'String.downcase('+varTok+')', conf:'confirmed_allowed' },
+          upper: { code:'String.upcase('+varTok+')', conf:'unverified' },
+          cap: { code:'String.capitalize('+varTok+')', conf:'unverified' },
+          trim: { code:'String.trim('+varTok+')', conf:'unverified' },
+          reverse: { code:'String.reverse('+varTok+')', conf:'unverified' },
+          length: { code:'String.length('+varTok+')', conf:'unverified' },
+          oddEven: { code:'if rem(String.to_integer('+varTok+'), 2) == 0, do: "even", else: "odd"', conf:'unverified' },
+          replace: { code:'String.replace('+varTok+', '+q(f.findText)+', '+q(f.replaceText)+')', conf:'unverified' },
+          round: { code:'Float.round(String.to_float('+varTok+'), 0)', conf:'unverified' }
+        };
+        var m = map[f.op];
+        return { code:'<%= '+m.code+' %>', confidence:m.conf, targetNode:'Update the contact, or Save a result for this flow',
+          caveat: f.op==='round' ? 'Assumes the value has a decimal point \u2014 use round(String.to_integer(...)) instead if it\u2019s already a whole number.' : null };
+      } },
+
+    { id:'slice', label:'Slice text', desc:'First/last N characters, or the text before/after a marker.',
+      fields:[].concat(varFields('v','Variable')).concat([
+        { key:'mode', label:'Mode', type:'select', options:[['firstN','First N characters'],['lastN','Last N characters'],['after','Text after a marker'],['before','Text before a marker']] },
+        { key:'n', label:'N (number of characters)', type:'number', showIf:function(f){ return f.mode==='firstN'||f.mode==='lastN'; } },
+        { key:'marker', label:'Marker text', type:'text', showIf:function(f){ return f.mode==='after'||f.mode==='before'; } }
+      ]),
+      build:function(f) {
+        var varTok = q(v(f.v_type, f.v_name));
+        if (f.mode === 'firstN') return { code:'<%= String.slice('+varTok+', 0, '+(f.n||5)+') %>', confidence:'unverified', targetNode:'Save a result for this flow' };
+        if (f.mode === 'lastN') return { code:'<%= String.slice('+varTok+', -'+(f.n||5)+'..-1) %>', confidence:'unverified', targetNode:'Save a result for this flow' };
+        var side = f.mode === 'after' ? 1 : 0;
+        return { code:'<%= String.split('+varTok+', '+q(f.marker)+', parts: 2) |> Enum.at('+side+') %>', confidence:'unverified', targetNode:'Save a result for this flow' };
+      } }
+  ];
+
+  // ---------- rendering ----------
+  var categorySelect = document.getElementById('categorySelect');
+  var fieldsArea = document.getElementById('fieldsArea');
+  var categoryDesc = document.getElementById('categoryDesc');
+
+  CATEGORIES.forEach(function(cat, i) {
+    var opt = document.createElement('option');
+    opt.value = cat.id; opt.textContent = cat.label;
+    categorySelect.appendChild(opt);
+  });
+
+  function currentCategory() { return CATEGORIES.filter(function(c){ return c.id === categorySelect.value; })[0]; }
+
+  function readValues(cat) {
+    var vals = {};
+    cat.fields.forEach(function(f) {
+      var el = document.getElementById('f_' + f.key);
+      if (el) vals[f.key] = el.value;
+    });
+    return vals;
+  }
+
+  function renderFields() {
+    var cat = currentCategory();
+    categoryDesc.textContent = cat.desc;
+    fieldsArea.innerHTML = '';
+    var vals = {};
+    cat.fields.forEach(function(f) {
+      var wrap = document.createElement('div');
+      wrap.id = 'wrap_' + f.key;
+      var label = document.createElement('label');
+      label.textContent = f.label;
+      label.setAttribute('for', 'f_' + f.key);
+      wrap.appendChild(label);
+      var el;
+      if (f.type === 'select') {
+        el = document.createElement('select');
+        f.options.forEach(function(o) {
+          var opt = document.createElement('option');
+          opt.value = o[0]; opt.textContent = o[1];
+          el.appendChild(opt);
+        });
+      } else if (f.type === 'textarea') {
+        el = document.createElement('textarea');
+        if (f.placeholder) el.placeholder = f.placeholder;
+      } else {
+        el = document.createElement('input');
+        el.type = f.type === 'number' ? 'number' : 'text';
+        if (f.placeholder) el.placeholder = f.placeholder;
+      }
+      el.id = 'f_' + f.key;
+      el.oninput = el.onchange = updateVisibility;
+      wrap.appendChild(el);
+      if (f.hint) {
+        var hint = document.createElement('p');
+        hint.className = 'field-hint';
+        hint.textContent = f.hint;
+        wrap.appendChild(hint);
+      }
+      fieldsArea.appendChild(wrap);
+    });
+    updateVisibility();
+  }
+
+  function updateVisibility() {
+    var cat = currentCategory();
+    var vals = readValues(cat);
+    cat.fields.forEach(function(f) {
+      var wrap = document.getElementById('wrap_' + f.key);
+      if (!wrap) return;
+      var show = f.showIf ? f.showIf(vals) : true;
+      wrap.classList.toggle('hidden', !show);
+    });
+  }
+
+  categorySelect.onchange = renderFields;
+  renderFields();
+
+  document.getElementById('buildBtn').onclick = function() {
+    var cat = currentCategory();
+    var vals = readValues(cat);
+    var result = cat.build(vals);
+    var meta = document.getElementById('metaLine');
+    var exprCode = document.getElementById('exprCode');
+    var targetLine = document.getElementById('targetLine');
+    if (!result) {
+      meta.innerHTML = '<span class="verify">Fill in the required fields above.</span>';
+      exprCode.textContent = '';
+      targetLine.textContent = '';
+      document.getElementById('outputPanel').style.display = 'block';
+      return;
+    }
+    var confSpan = result.confidence === 'confirmed_allowed' ? '<span class="confirmed">Confirmed working</span>'
+      : result.confidence === 'guidance' ? '<span class="verify">Design note, not a direct answer</span>'
+      : '<span class="verify">Your expression is ready.</span>';
+    meta.innerHTML = confSpan + (result.explain ? '<br>' + result.explain : '') + (result.caveat ? '<br>\u26a0 ' + result.caveat : '');
+    exprCode.textContent = result.code;
+    targetLine.innerHTML = '';
+    document.getElementById('outputPanel').style.display = 'block';
+  };
+
+  document.getElementById('copyBtn').onclick = function() {
+    var text = document.getElementById('exprCode').textContent;
+    navigator.clipboard.writeText(text).then(function() {
+      var flag = document.getElementById('copiedFlag');
+      flag.textContent = 'Copied \u2713';
+      setTimeout(function(){ flag.textContent = ''; }, 1400);
+    });
+  };
+</script>
+</body>
+</html>
