@@ -35,7 +35,7 @@ global.document = {
   createElement: () => ({ appendChild(){}, setAttribute(){}, style:{}, classList:{toggle(){}} })
 };
 
-const htmlPath = path.join(__dirname, 'glific-expression-picker.html');
+const htmlPath = path.join(__dirname, 'glific-expression-picker-v4.html');
 const logic = extractLogic(htmlPath);
 eval(logic); // defines CATEGORIES and all helper functions in this scope
 
